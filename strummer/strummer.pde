@@ -12,7 +12,7 @@ import cc.arduino.*;
 // 2. Normal mode : uses Arduino input to determine which strings are played
 class Config {
   Config() {
-    bModeAutoStrum = false;
+    bModeAutoStrum = true;
     bModeTriggerOnDown = false;
   }
   

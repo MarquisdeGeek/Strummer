@@ -1,5 +1,7 @@
 # Strummer
-Making a keyboard sound like a (strummed) guitar
+Making a keyboard sound like a (strummed) guitar.
+
+It does this by changing the notes from a keyboard chord into a guitar chord, and playing them back with a delay between them, to simulate the time between successive strings being played.
 
 ## Getting it to work
 
@@ -29,6 +31,8 @@ you can use a suitably rigged Arduino to trigger the notes/strings individual, g
 
 The software simply remaps the keyboard chord to a guitar chord, and plays only the notes that the Arduino says to.
 
+There is also a 'bModeTriggerOnDown' mode, which causes the notes to sound when the string is touched. Otherwise, the sound is made when the contact is broken. This is more realistic and akin to a real guitar. In this mode, touching the string will damped then sound.
+
 ## Example
 
 There's a short video at  http://youtu.be/f0hhPRaNRZ0
@@ -42,4 +46,24 @@ The Minibus
 Arduino (Firmata)
 
 install both of these from 'Sketch->Import->Add library'
+
+## Changelog
+
+2015-03-29 
+Option for 'trigger on note up'
+Refactor to use SoundGenerator abstraction
+Refactor to allow Guitar class to handle the playback of individual strings
+
+
+2015-03-27
+Initial release
+
+
+## Future ideas
+
+* Add a UI so patches and options can be changed whilst running
+* Fade out note when 'released'
+* Stop string retriggers within N ms of the last one
+* Add MIDI through for note range: { from, to, use channel, use patch }
+
 
