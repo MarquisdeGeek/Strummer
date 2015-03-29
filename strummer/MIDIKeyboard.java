@@ -1,26 +1,12 @@
-import themidibus.*;
 
 class MIDIKeyboard {
   
 static final int  MAX_CHANNELS   = 16;
 static final int  MAX_NOTES   = 128;
 
-  MIDIKeyboard(MidiBus bus_) {
-    bus = bus_;
-    notesOctave = new boolean [16][12];
+  MIDIKeyboard() {
+     notesOctave = new boolean [16][12];
     notesMap = new int[MAX_CHANNELS][MAX_NOTES];
-  }
-  
-  void sendProgramChange(int channel, int instrument) {
-      bus.sendMessage(0xC0, channel, instrument, 0);
-  }
-  
-  void sendNoteOn(int channel, int pitch, int velocity) {
-      bus.sendNoteOn(channel, pitch, velocity); 
-  }
-  
-  void sendNoteOff(int channel, int pitch) {
-       bus.sendNoteOn(channel, pitch, 0); 
   }
   
   void noteOn(int channel, int pitch, int velocity) {
@@ -82,6 +68,6 @@ static final int  MAX_NOTES   = 128;
   
   private boolean[][] notesOctave;
   private int[][] notesMap;
-  private MidiBus bus;
+  
   
 }

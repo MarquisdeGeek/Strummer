@@ -8,7 +8,7 @@ Making a keyboard sound like a (strummed) guitar
 3. Note the port to which the Arduino is connected. (This will appear in the Processing console output.)
 4. Amend the code to use the correct port. The line begins 'arduino = new Arduino'. Change index of arduinoList.
 5. Plug in your MIDI controller keyboard
-6. Determine an appropriate MIDI input/output device. (Thees will appear in the Processing console output.)
+6. Determine an appropriate MIDI input/output device. (These will appear in the Processing console output.)
 7. Amend the code to use the correct port. The line begins 'MidiBus myBus = new MidiBus'. Change the names to match the output.
 
 ## The two modes

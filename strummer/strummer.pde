@@ -13,18 +13,16 @@ import cc.arduino.*;
 class Config {
   Config() {
     bModeAutoStrum = false;
+    bModeTriggerOnDown = false;
   }
   
   boolean bModeAutoStrum;
+  boolean bModeTriggerOnDown;
 }
 
-class DeviceState {
-  // When using Arduino-based manual strumming
-  long notesOffAt[] = {0,0,0,0,0,0};
-}
 
-DeviceState g_State = new DeviceState();
 Config      g_Config = new Config();
+SoundGeneratorMIDI  g_SoundOutputGuitar;
 
 Arduino arduino;
 int pinStringBass = 3;
@@ -43,10 +41,11 @@ void setup() {
   MidiBus myBus = new MidiBus(this, "SB Audigy 2 MIDI IO [CF80]", "SB Audigy 2 Synth A [CF80]");
   
   //
-  keyboard = new MIDIKeyboard(myBus);
-  keyboard.sendProgramChange(0, 25);// send guitar : http://www.midi.org/techspecs/gm1sound.php 
+  g_SoundOutputGuitar = new SoundGeneratorMIDI(myBus, 0);
+  g_SoundOutputGuitar.sendProgramChange( 25);// send guitar : http://www.midi.org/techspecs/gm1sound.php 
   //
-  guitar = new Guitar();
+  keyboard = new MIDIKeyboard();
+  guitar = new Guitar(g_SoundOutputGuitar);
 
   // Do arduino last, because it takes ages!
   String[] arduinoList = Arduino.list();
@@ -87,6 +86,10 @@ void delay(int time) {
   while (millis () < current+time) Thread.yield();
 }
 
+long getMillis() {
+  return millis();
+}
+
 void handleManualStrum(int channel) {
   if (g_Config.bModeAutoStrum || lastGuitarTab == null || arduino == null) {  
     return;
@@ -96,33 +99,38 @@ void handleManualStrum(int channel) {
   long t = millis();
   for(int s=0;s<6;++s) {  
     int pinState = arduino.digitalRead(pinStringBass + s);
-     if (pinState == Arduino.HIGH && !pinLastState[s]) {
-        
-        int p = lastGuitarTab.getMIDIPitch(s);  // we could also use isStringMuted
+    boolean trigger = false;
+    
+    if (g_Config.bModeTriggerOnDown) {
+      trigger = (pinState == Arduino.HIGH && !pinLastState[s]);
+    } else {
+      trigger = (pinState == Arduino.LOW && pinLastState[s]);
+    }   
+    
+    if (trigger) {
+        int p = lastGuitarTab.getFretPosition(s);
         if (p != 0) {
-          keyboard.sendNoteOn(channel, p, 120);
-          g_State.notesOffAt[s] = t + 1500;
+          guitar.positionFinger(s, p);
+          guitar.playString(s);
         } else {
-          g_State.notesOffAt[s] = 0;
+          guitar.muteString(s);
         }
-     }
-     pinLastState[s] = pinState == Arduino.HIGH;
-  } 
-  //
-  clearAllOldNotes(channel);
+
+    } else {  // no note triggered
+      if (!g_Config.bModeTriggerOnDown && pinState == Arduino.HIGH) {
+       // In 'trigger on up' mode the 'string touched' action causes the sound to be dampened
+       guitar.muteString(s);
+      }
+    } // fi trigger
+    
+    pinLastState[s] = pinState == Arduino.HIGH;
+  }
+
 }
 
-void clearAllOldNotes(int channel) {
-  if (lastGuitarTab == null) {
-    return;
-  }
-  //
-  long t = millis();
+void clearAllOldNotes() {
   for(int s=0;s<6;++s) {  
-       int p = lastGuitarTab.getMIDIPitch(s);  // we could also use isStringMuted
-       if (p != 0 && t > g_State.notesOffAt[s]) {
-            keyboard.sendNoteOff(channel, p);
-       }
+    guitar.muteString(s);
   }
 }
 
@@ -131,21 +139,7 @@ void onKeyboardChanged(int channel, int velocity) {
   // This is a simple handler, where a whole chord needs to be held down
   // for any notes to play. With work, this can be changed so that, for example
   // a C & E of C chord would play only the C/E notes from the guitar tab.
-  // But for now, whenever a chord is changed, we release all the previous notes.
-  if (lastGuitarTab != null) {
-    for(int s=0;s<6;++s) {      
-      int p = lastGuitarTab.getMIDIPitch(s);  // we could also use isStringMuted
-      if (p != 0) {
-        // If the notes don't sustain when 'off'd, then remove this.
-        // (this is probably most devices)
-        //keyboard.sendNoteOff(channel, p);
-        // TODO: A better approach might be to only stop the note when another one on the same string is played
-        // Currently we just wait a short time before stopping it
-      }
-    }
-    //
-    lastGuitarTab = null;
-  }
+
       
   // Now see if there's a new chord
   Chord chord = keyboard.deduceChord(channel);
@@ -168,14 +162,25 @@ void onKeyboardChanged(int channel, int velocity) {
       }
       
       for(int s=startAt;s!=endAt;s+=delta) {      
-        int p = tab.getMIDIPitch(s);
+        int p = tab.getFretPosition(s);
         if (p != 0) {
-          keyboard.sendNoteOn(channel, p, velocity);
+          guitar.positionFinger(s, p);
+          guitar.playString(s);
+
           delay((int)(25+random(20)));
+        } else {
+          guitar.muteString(s);
         }
       }
     } else {  // use the arduino to play individual notes
       // new notes not handled here - see handleArduinoStrum() for code
+      
+      // However, if the chord has changed, we can mute the existing notes
+      // ready for a new chord.
+      // (ATM, I prefer the sound without the auto-mute. YMMV)
+      if (tab.changedFrom(lastGuitarTab)) {
+        //clearAllOldNotes();
+      }
     }
     
     lastGuitarTab = tab;
